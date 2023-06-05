@@ -3,29 +3,67 @@ const cartProducts = document.querySelector(".cart__products");
 const cart = document.querySelector(".cart");
 const storage = window.localStorage;
 
+// массив товараов для хранилища
+let productArray = [];
+
+// удаление товара из корзины
 const deleteProduct = (elem) => {
     const product = elem.parentElement.closest(".cart__product");
-    product.remove();
-    saveStorage();
+    //обновляем массив для хранилища
+    let updatedProducts = productArray.filter(productInStorage => productInStorage.id != product.dataset.id)
+    //удаляем товар из корзины
+    product.remove(); 
+    saveStorage(JSON.stringify(updatedProducts));
 }
+
+// функция создания товара в корзине 
+const createProductDOM = (id, image, count) => {
+    cartProduct = document.createElement("div");
+    cartProduct.className = "cart__product";
+    cartProduct.dataset.id = id;
+
+    const cpImage = document.createElement("img");
+    cpImage.className = "cart__product-image";
+    cpImage.src = image;
+
+    const cpCount = document.createElement("div");
+    cpCount.classList = "cart__product-count";
+    cpCount.textContent = count;
+
+    const cpDelete = document.createElement("div");
+    cpDelete.className = "cart__product-delete";
+    cpDelete.innerHTML = "&times;";
+    cpDelete.addEventListener("click", () => {
+        deleteProduct(cpDelete);
+    })
+    
+    cartProduct.append(cpImage);
+    cartProduct.append(cpCount);
+    cartProduct.append(cpDelete);
+    cartProducts.append(cartProduct);
+    return cartProduct;
+} 
 
 const start = () => {
     const content = localStorage.getItem("cart");
-    cartProducts.innerHTML = content
+    if (content !== "undefined") {
+        productArray = JSON.parse(content);
+        if (productArray) {
+            productArray.forEach(product => {
+                createProductDOM(product.id, product.image, product.count)
+            })
+        } else {
+            productArray = [];
+        }
+    }
+    
+    // обновляем видимость корзины
     visibleCart();
-    const deleteButtons = Array.from(document.querySelectorAll(".cart__product-delete"));
-    deleteButtons.forEach(del => {
-        del.addEventListener("click", () => {
-            deleteProduct(del);
-            saveStorage();
-            visibleCart();
-        })
-    })
 }
 
 // сохраннение корзины в хранилище
-const saveStorage = () => {
-    localStorage.setItem("cart", cartProducts.innerHTML);
+const saveStorage = (data) => {
+    localStorage.setItem("cart", data);
 }
 
 // выводим корзину на экран, если в ней есть хоть 1 товар
@@ -51,7 +89,7 @@ products.forEach(product => {
     const countItem = product.querySelector(".product__quantity-value");
     const buyButton = product.querySelector(".product__add");
 
-    let count = countItem.textContent;
+    let count = Number(countItem.textContent);
 
     addCount.addEventListener("click", () => {
         count++;
@@ -66,59 +104,38 @@ products.forEach(product => {
     })
 
     buyButton.addEventListener("click", function() {
-        let cartProduct;
-        let cartProductItems = Array.from(cart.querySelectorAll(".cart__product"));
         const productImage = product.querySelector("img");
+        
+        // Проверяем, есть ли в корзине выбранный товар
+        let cartProduct = Array.from(cart.querySelectorAll(".cart__product")).find(pic => pic.dataset.id == product.dataset.id);
 
-        let addProduct = false; // будем ли добавлять новый товар в корзину
-
-        if (cartProductItems.length > 0) {
-            let serchProduct = false; // есть ли такой товар в корзине
-            cartProductItems.forEach(cartProductItem => {
-                if (cartProductItem.dataset.id == product.dataset.id) { // товар есть - изменяем количество
-                    cartProduct = cartProductItem;
-                    cartProductCountItem = cartProduct.querySelector(".cart__product-count");
-                    cartProductCount = Number(cartProductCountItem.textContent) + Number(count);
-                    cartProductCountItem.textContent = cartProductCount;
-                    serchProduct = true;
-                } 
-            }) 
-            if (!serchProduct){ // товара в корзине нет - добавляем
-                addProduct = true;
-            }
-        } else {
-            addProduct = true
+        let productObject = {
+            id: product.dataset.id,
+            image: productImage.src,
+            count: count
         }
-            
-        // товара в корзине нет - добавляем сам товар и его количество
-        if (addProduct) {
-            cartProduct = document.createElement("div");
-            cartProduct.className = "cart__product";
-            cartProduct.dataset.id = product.dataset.id;
 
-            const cpImage = document.createElement("img");
-            cpImage.className = "cart__product-image";
-            cpImage.src = productImage.src;
-
-            const cpCount = document.createElement("div");
-            cpCount.classList = "cart__product-count";
-            cpCount.textContent = count;
-
-            const cpDelete = document.createElement("div");
-            cpDelete.className = "cart__product-delete";
-            cpDelete.innerHTML = "&times;";
-            cpDelete.addEventListener("click", () => {
-                deleteProduct(cpDelete);
-            })
-            
-            cartProduct.append(cpImage);
-            cartProduct.append(cpCount);
-            cartProduct.append(cpDelete);
-            cartProducts.append(cartProduct);
+        // если в корзине товара нет - создаем его
+        if (!cartProduct) {
+            cartProduct = createProductDOM(product.dataset.id, productImage.src, count);
+            productObject.count = count;
+            productArray.push(productObject);
+        } else { // иначе - увеличиваем количество выбранного товара
+            cartProductCountItem = cartProduct.querySelector(".cart__product-count");
+            cartProductCount = Number(cartProductCountItem.textContent) + Number(count);
+            cartProductCountItem.textContent = cartProductCount;
+            productObject.count = cartProductCount;
+            productArray.find(productInStorage => productInStorage.id == product.dataset.id).count = cartProductCount;
         }
+
+        // делаем корзину ввидимой (если до этогов ней не было товаров)
         visibleCart();
+        // сохраняем корзину в хранилище
+        saveStorage(JSON.stringify(productArray));
 
-        //анимация добавления товара
+        /*
+            Анимация добавления товара в корзину
+        */
         const flyImage = document.createElement("img");
         flyImage.className = "fly_image";
         flyImage.src = productImage.src;
@@ -173,7 +190,5 @@ products.forEach(product => {
         }
         // изображение полетело
         reposition(0);
-
-        saveStorage();
     })
 })

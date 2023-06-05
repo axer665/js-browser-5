@@ -2,16 +2,15 @@ let tooltips = Array.from(document.querySelectorAll(".has-tooltip"));
 
 const createTooltips = () => {
     tooltips.forEach((tooltip) => {
-        let popup = tooltip.querySelector(".tooltip");
-        if (!popup) {
-            popup = document.createElement("div");
-            popup.textContent = this.title;
-            popup.className = "tooltip";
-            tooltip.appendChild(popup);
-        }
+        let popup = document.createElement("div");
+        popup.textContent = this.title;
+        popup.className = "tooltip";
+        //вставляем созданный tooltip сразу после ссылки
+        tooltip.after(popup);
     })
 }
 
+// убираем класс активности у всех подсказок
 const deactivateTooltips = () => {
     const tooltips = Array.from(document.querySelectorAll(".tooltip"));
     tooltips.forEach(tooltip => {
@@ -26,18 +25,23 @@ tooltips.forEach((tooltip) => {
     // уберем ссылки 
     tooltip.removeAttribute("href");
     tooltip.addEventListener("click", function() {
-
-        // убираем подсказки, которые уже есть на странице
-        deactivateTooltips();
-
         // выясняем где находимся и свои габариты
         let top = this.getBoundingClientRect().top;
         let left = this.getBoundingClientRect().left;
         let width = this.getBoundingClientRect().width;
         let height = this.getBoundingClientRect().height;
 
-        // создаем блок подсказки
-        let popup = this.querySelector(".tooltip");
+        // создаем блок подсказки из соображений того, что подсказка в DOM  
+        // идет сразу за текущим элементом ссылки
+        let popup = this.nextElementSibling; 
+
+        if (popup.classList.contains("tooltip_active")) {
+            popup.classList.remove("tooltip_active");
+            return;
+        }
+        
+        // убираем подсказки, которые уже есть на странице
+        deactivateTooltips();
         popup.textContent = this.title;
         popup.classList.add("tooltip_active");
 
@@ -64,10 +68,5 @@ tooltips.forEach((tooltip) => {
 
         popup.style.left = popupPosition.left + "px";
         popup.style.top = popupPosition.top + "px";
-        
-        // через 3 секунды уберем подсказку
-        setTimeout(()=> {
-            popup.classList.remove("tooltip_active");
-        }, 3000);
     })
 })
